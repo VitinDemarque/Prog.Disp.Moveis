@@ -1,13 +1,8 @@
 import React from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  FlatList,
-  Modal,
-  TextInput,
-  StyleSheet,
-} from "react-native";
+import { View, FlatList, Image, StyleSheet } from "react-native";  
+import {Appbar,Button,Card,Dialog,Portal,TextInput,Provider as PaperProvider,} from "react-native-paper";
+import * as ImagePicker from "expo-image-picker";
+import { Camera } from "expo-camera"; 
 import { Item } from "../models/Item";
 
 type Props = {
@@ -16,6 +11,8 @@ type Props = {
   editingItem: Item | null;
   inputText: string;
   setInputText: (text: string) => void;
+  inputImage: string | null;            
+  setInputImage: (uri: string | null) => void;
   openAddModal: () => void;
   openEditModal: (item: Item) => void;
   closeModal: () => void;
@@ -29,109 +26,158 @@ const ItemView = ({
   editingItem,
   inputText,
   setInputText,
+  inputImage,
+  setInputImage,
   openAddModal,
   openEditModal,
   closeModal,
   handleSave,
   handleDelete,
 }: Props) => {
+
+  const pickImage = async () => {
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      alert("Permissão para acessar a galeria é necessária!");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setInputImage(result.assets[0].uri);
+    }
+  };
+
+  const pickFromCamera = async () => {
+    const permissionResult = await Camera.requestCameraPermissionsAsync();
+
+    if (permissionResult.status !== "granted") {
+      alert("Permissão para usar a câmera é necessária!");
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setInputImage(result.assets[0].uri);
+    }
+  };
+
   const renderItem = ({ item }: { item: Item }) => (
-    <TouchableOpacity style={styles.item} onPress={() => openEditModal(item)}>
-      <Text>{item.title}</Text>
-    </TouchableOpacity>
+    <Card style={styles.card} onPress={() => openEditModal(item)}>
+      <Card.Title title={item.title} />
+      {item.imageUri && (
+        <Card.Cover source={{ uri: item.imageUri }} style={{ height: 120 }} />
+      )}
+    </Card>
   );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Lista de Itens</Text>
+    <PaperProvider>
+      <View style={styles.container}>
+        <Appbar.Header>
+          <Appbar.Content title="TABELA" />
+        </Appbar.Header>
 
-      <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-        <Text>Adicionar Item</Text>
-      </TouchableOpacity>
+        <Button
+          mode="contained"
+          style={styles.addButton}
+          onPress={openAddModal}
+        >
+          Adicionar Item
+        </Button>
 
-      <FlatList data={items} renderItem={renderItem} keyExtractor={item => item.id} />
+        <FlatList
+          data={items}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id}
+        />
 
-      <Modal visible={modalVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.dialog}>
-            <Text style={styles.modalTitle}>
+        <Portal>
+          <Dialog visible={modalVisible} onDismiss={closeModal}>
+            <Dialog.Title>
               {editingItem ? "Editar Item" : "Novo Item"}
-            </Text>
+            </Dialog.Title>
+            <Dialog.Content>
+              <TextInput
+                label="Título"
+                mode="outlined"
+                value={inputText}
+                onChangeText={setInputText}
+                style={{ marginBottom: 10 }}
+              />
 
-            <TextInput
-              style={styles.input}
-              placeholder="Digite o título"
-              value={inputText}
-              onChangeText={setInputText}
-            />
+              <Button
+                mode="outlined"
+                onPress={pickImage}
+                style={{ marginBottom: 10 }}
+              >
+                Escolher da Galeria
+              </Button>
 
-            <View style={styles.buttons}>
-              <TouchableOpacity style={styles.button} onPress={closeModal}>
-                <Text style={styles.buttonText}>Cancelar</Text>
-              </TouchableOpacity>
+              <Button
+                mode="outlined"
+                onPress={pickFromCamera}
+                style={{ marginBottom: 10 }}
+              >
+                Abrir Câmera
+              </Button>
 
-              {editingItem && (
-                <TouchableOpacity
-                  style={[styles.button, styles.deleteButton]}
-                  onPress={handleDelete}
-                >
-                  <Text style={[styles.buttonText, styles.deleteButtonText]}>
-                    Excluir
-                  </Text>
-                </TouchableOpacity>
+              {inputImage && (
+                <Image
+                  source={{ uri: inputImage }}
+                  style={{
+                    width: 120,
+                    height: 120,
+                    marginTop: 10,
+                    alignSelf: "center",
+                    borderRadius: 8,
+                  }}
+                />
               )}
+            </Dialog.Content>
 
-              <TouchableOpacity style={styles.button} onPress={handleSave}>
-                <Text style={styles.buttonText}>
-                  {editingItem ? "Salvar" : "Adicionar"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-    </View>
+            <Dialog.Actions>
+              <Button onPress={closeModal}>Cancelar</Button>
+              {editingItem && (
+                <Button textColor="red" onPress={handleDelete}>
+                  Excluir
+                </Button>
+              )}
+              <Button onPress={handleSave}>
+                {editingItem ? "Salvar" : "Adicionar"}
+              </Button>
+            </Dialog.Actions>
+          </Dialog>
+        </Portal>
+      </View>
+    </PaperProvider>
   );
 };
 
 export default ItemView;
 
-// ⚠️ Este é o ÚNICO bloco de estilos. Não pode ter outro!
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, paddingTop: 50 },
-  title: { fontSize: 20, fontWeight: "bold", marginBottom: 20 },
+  container: { flex: 1, backgroundColor: "#f5f5f5" },
   addButton: {
-    backgroundColor: "#ddd",
-    padding: 10,
-    marginBottom: 20,
-    alignItems: "center",
-  },
-  item: { padding: 15, borderBottomWidth: 1, borderBottomColor: "#ccc" },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-  dialog: {
-    backgroundColor: "white",
-    padding: 20,
-    margin: 20,
+    margin: 16,
     borderRadius: 8,
-    width: "80%",
+    paddingVertical: 6,
   },
-  modalTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 20, textAlign: "center" },
-  input: { borderWidth: 1, borderColor: "#ccc", padding: 10, marginBottom: 20 },
-  buttons: { flexDirection: "row", justifyContent: "space-between", marginTop: 20 },
-  button: {
-    backgroundColor: "#ddd",
-    padding: 8,
-    flex: 1,
-    marginHorizontal: 4,
-    alignItems: "center",
-    borderRadius: 4,
+  card: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 8,
+    overflow: "hidden",
   },
-  buttonText: { fontSize: 14, fontWeight: "500" },
-  deleteButton: { backgroundColor: "#ffebee" },
-  deleteButtonText: { color: "#d32f2f" },
 });

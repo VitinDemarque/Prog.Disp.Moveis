@@ -11,33 +11,38 @@ export default function App() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [inputText, setInputText] = useState("");
+  const [inputImage, setInputImage] = useState<string | null>(null);
 
   const closeModal = () => {
     setInputText("");
+    setInputImage(null);
     setEditingItem(null);
     setModalVisible(false);
   };
 
   const openAddModal = () => {
     setInputText("");
+    setInputImage(null);
     setEditingItem(null);
     setModalVisible(true);
   };
 
   const openEditModal = (item: Item) => {
     setInputText(item.title);
+    setInputImage(item.imageUri || null);
     setEditingItem(item);
     setModalVisible(true);
   };
 
   const handleSave = () => {
     if (editingItem) {
-      ItemController.updateItem(items, editingItem, inputText, setItems);
+      ItemController.updateItem(items, editingItem, inputText, inputImage, setItems);
     } else {
-      ItemController.addItem(items, inputText, setItems);
+      ItemController.addItem(items, inputText, inputImage, setItems);
     }
-    closeModal();
-  };
+  closeModal();
+};
+
 
   const handleDelete = () => {
     ItemController.deleteItem(items, editingItem, setItems);
@@ -51,6 +56,8 @@ export default function App() {
       editingItem={editingItem}
       inputText={inputText}
       setInputText={setInputText}
+      inputImage={inputImage}
+      setInputImage={setInputImage}
       openAddModal={openAddModal}
       openEditModal={openEditModal}
       closeModal={closeModal}
